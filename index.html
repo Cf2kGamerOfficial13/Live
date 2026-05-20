@@ -21,7 +21,7 @@ background:radial-gradient(circle at top,#0f4aa0 0%,#06172f 50%,#000 100%)
 
 .wrapper{position:relative;width:100%;height:100%}
 
-/* VIDEO CENTER SAKTO LANG SIZE */
+/* SMALL PLAYER */
 .player-box{
 position:absolute;
 top:85px;
@@ -29,7 +29,7 @@ left:50%;
 transform:translateX(-50%);
 width:92%;
 max-width:420px;
-height:240px;   /* sakto lang height */
+height:240px;
 background:#000;
 border-radius:18px;
 overflow:hidden;
@@ -45,7 +45,7 @@ object-fit:cover;
 background:#000
 }
 
-/* TOP BAR */
+/* TOP */
 .top{
 position:absolute;top:0;left:0;width:100%;
 display:flex;justify-content:space-between;align-items:center;
@@ -120,6 +120,7 @@ transition:.2s
 
 .status{font-size:10px;color:#7fe3ff;font-family:Orbitron;margin-top:3px}
 
+/* STATUS */
 .statusbox{
 position:absolute;top:180px;left:50%;
 transform:translateX(-50%);
@@ -150,7 +151,7 @@ z-index:60
 </div>
 
 <div class="player-box">
-<video id="video" autoplay playsinline controls></video>
+<video id="video" autoplay playsinline controls muted></video>
 </div>
 
 <div class="overlay" id="overlay">
@@ -178,30 +179,38 @@ function toggleMenu(){
 overlay.classList.toggle("active")
 }
 
-async function loadChannels(){
+async function loadChannels(retry=2){
 try{
 statusBox.style.display="block"
 statusBox.innerText="LOADING CHANNELS..."
 
 const res=await fetch(CHANNELS_URL+"?v="+Date.now(),{cache:"no-store"})
+if(!res.ok) throw new Error("fetch fail")
+
 channels=await res.json()
 
 statusBox.style.display="none"
 return true
+
 }catch(e){
-statusBox.innerText="FAILED"
+if(retry>0){
+statusBox.innerText="RETRYING..."
+return loadChannels(retry-1)
+}
+statusBox.innerText="FAILED TO LOAD"
 return false
 }
 }
 
 async function initApp(){
+
 shaka.polyfill.installAll()
 shakaPlayer=new shaka.Player(video)
 
 let ok=await loadChannels()
 if(ok){
 renderChannels()
-setTimeout(()=>document.querySelector(".item")?.click(),600)
+setTimeout(()=>document.querySelector(".item")?.click(),700)
 }
 }
 
@@ -216,12 +225,12 @@ overlay.classList.remove("active")
 statusBox.style.display="block"
 statusBox.innerText="CONNECTING..."
 
+try{
+
 if(hls){hls.destroy();hls=null}
 await shakaPlayer.unload()
 
 let url=ch.file
-
-try{
 
 if(url.includes(".mpd")){
 
@@ -239,11 +248,14 @@ if(Hls.isSupported()){
 hls=new Hls()
 hls.loadSource(url)
 hls.attachMedia(video)
-}else video.src=url
+}else{
+video.src=url
+}
 }
 
-video.play()
-setTimeout(()=>statusBox.style.display="none",1000)
+video.play().catch(()=>{})
+
+setTimeout(()=>statusBox.style.display="none",900)
 
 }catch(e){
 statusBox.innerText="CHANNEL OFFLINE"
